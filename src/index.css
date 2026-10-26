@@ -1,0 +1,10 @@
+@import "tailwindcss";
+@import "../styles.css";
+
+.three-scene-canvas {
+  position: absolute !important;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  pointer-events: none;
+}
