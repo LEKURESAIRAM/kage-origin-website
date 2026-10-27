@@ -964,3 +964,14 @@ body { background:#edf4fb; }
     transition:none;
   }
 }
+.button,
+.floating-back-to-top {
+  border-radius:999px;
+}
+.floating-back-to-top {
+  padding-inline:20px;
+  box-shadow:inset 0 1px 0 #ffffffa6,0 8px 24px #07172e2b;
+}
+.floating-back-to-top:hover {
+  box-shadow:inset 0 1px 0 #ffffffc7,0 11px 28px #07172e3b;
+}
