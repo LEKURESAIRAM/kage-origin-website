@@ -15,21 +15,13 @@ Create and type-check a production build with `npm run build`. Preview that buil
 
 Import the project into Vercel, select the Vite preset, set the build command to `npm run build`, and set the output directory to `dist`. The project can also be deployed to any static host that serves Vite's `dist` output.
 
-## Contact form (Supabase and Formspree)
+## Contact form (Formspree)
 
-The enquiry form sends email notifications through Formspree and, when configured, also inserts submissions into `public.customer_enquiries` using the official `@supabase/supabase-js` client. A success message is shown only when Formspree succeeds and any configured Supabase insert succeeds. If one service succeeds and the other fails, the form reports the partial result; retrying the unchanged form data retries only the failed service to avoid duplicate records or notifications.
+The enquiry form submits each enquiry to Formspree. Create a form in Formspree, configure its notification recipient, and copy the form endpoint into `VITE_FORMSPREE_ENDPOINT` in `.env.local`. The project includes a safe placeholder in `.env.example`; replace it with your actual endpoint. The endpoint is a public submission URL, not a secret API key.
 
-1. In Supabase, open the project's SQL Editor and run [`supabase/schema.sql`](./supabase/schema.sql). Its final query reports whether RLS is enabled, `anon` can insert, anonymous/authenticated roles cannot read, and the insert-only policy exists. Confirm those results before accepting submissions.
-2. Create a form in Formspree, configure its notification recipient as your desired email address, then copy its form endpoint (for example, the endpoint shown on the Formspree form integration page) into `VITE_FORMSPREE_ENDPOINT` in `.env.local`. Replace the `.env.example` placeholder with your own endpoint; do not add private API keys to frontend environment variables.
-3. For local development, copy `.env.example` to `.env.local` only if you do not already have a local environment file, and preserve existing values. Set `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` using the project URL and **publishable/anon** key from Supabase, and set `VITE_FORMSPREE_ENDPOINT` to the actual Formspree endpoint. Restart Vite after changing environment variables.
-4. In Vercel, add the Supabase variables and `VITE_FORMSPREE_ENDPOINT` under the project's Environment Variables for Production, Preview, and Development, then redeploy.
-5. View database submissions in Supabase under **Table Editor → customer_enquiries**. Formspree email delivery can be inspected in the Formspree dashboard. Access those dashboards only with your accounts.
+For local development, create `.env.local` only if one does not already exist, and preserve any existing values. Restart Vite after changing environment variables. In Vercel, set `VITE_FORMSPREE_ENDPOINT` for the environments you use and redeploy. The form displays success only after Formspree responds successfully, and reports a clear error if it does not.
 
-The publishable/anon key is intended for browser use and is protected by the table's insert-only policy. **Never put a Supabase `service_role` or secret key in a `VITE_` variable or browser code.** The Formspree endpoint is a public submission URL, not a secret API key. The form reports errors and partial failures rather than claiming all configured services succeeded.
-
-If the Supabase dependency was added after dependencies were installed, run `npm install` before starting Vite or running the production build.
-
-The public form can still receive automated spam. For a production launch with high traffic or sensitive data, add server-side rate limiting and CAPTCHA verification (for example, through a Supabase Edge Function and Turnstile) before opening public submissions.
+The Formspree email delivery has not been tested as part of this project change. Configure and verify the form using your own Formspree account.
 
 ## Assets
 

@@ -1,5 +1,3 @@
-import { createClient } from "@supabase/supabase-js";
-
 (function () {
   "use strict";
 
@@ -524,19 +522,8 @@ import { createClient } from "@supabase/supabase-js";
   var form = document.getElementById("enquiry-form");
   var feedback = document.getElementById("form-feedback");
   var config = window.KAGE_CONTACT_CONFIG || {};
-  var supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim();
-  var supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
   var formspreeEndpoint = import.meta.env.VITE_FORMSPREE_ENDPOINT?.trim();
   if (formspreeEndpoint === "YOUR_FORMSPREE_ENDPOINT") formspreeEndpoint = "";
-  var supabase = supabaseUrl && supabaseAnonKey
-    ? createClient(supabaseUrl, supabaseAnonKey, {
-        auth: {
-          persistSession: false,
-          autoRefreshToken: false,
-          detectSessionInUrl: false
-        }
-      })
-    : null;
   function validateField(field) {
     var message = "";
     var value = field.value.trim();
@@ -550,9 +537,7 @@ import { createClient } from "@supabase/supabase-js";
     field.setAttribute("aria-invalid", message ? "true" : "false");
     return !message;
   }
-
   var isSubmitting = false;
-  var lastSubmissionAttempt = null;
 
   form.addEventListener("input", function (event) {
     if (event.target.matches("input, textarea, select")) {
@@ -595,68 +580,30 @@ import { createClient } from "@supabase/supabase-js";
         return;
       }
 
-      var serializedData = JSON.stringify(data);
-      if (!lastSubmissionAttempt || lastSubmissionAttempt.data !== serializedData) {
-        lastSubmissionAttempt = {
-          data: serializedData,
-          formspreeSucceeded: false,
-          supabaseSucceeded: !supabase
-        };
+      if (!formspreeEndpoint) {
+        throw new Error("Formspree is not configured. Set VITE_FORMSPREE_ENDPOINT.");
       }
 
-      var emailRequest = lastSubmissionAttempt.formspreeSucceeded
-        ? Promise.resolve()
-        : formspreeEndpoint
-          ? fetch(formspreeEndpoint, {
-              method: "POST",
-              headers: {
-                "Accept": "application/json",
-                "Content-Type": "application/json"
-              },
-              body: JSON.stringify(data)
-            }).then(function (response) {
-              if (!response.ok) throw new Error("Formspree returned " + response.status + ".");
-            })
-          : Promise.reject(new Error("Formspree is not configured. Set VITE_FORMSPREE_ENDPOINT."));
-
-      var databaseRequest = lastSubmissionAttempt.supabaseSucceeded
-        ? Promise.resolve()
-        : supabase
-          ? supabase.from("customer_enquiries").insert(data).then(function (submission) {
-              if (submission.error) throw submission.error;
-            })
-          : Promise.resolve();
-      var results = await Promise.allSettled([emailRequest, databaseRequest]);
-      if (results[0].status === "fulfilled") lastSubmissionAttempt.formspreeSucceeded = true;
-      if (results[1].status === "fulfilled") lastSubmissionAttempt.supabaseSucceeded = true;
-
-      if (lastSubmissionAttempt.formspreeSucceeded && lastSubmissionAttempt.supabaseSucceeded) {
-        form.reset();
-        feedback.classList.remove("is-error", "is-demo");
-        feedback.textContent = "Thank you. Your enquiry has been submitted.";
-        lastSubmissionAttempt = null;
-      } else if (supabase && lastSubmissionAttempt.supabaseSucceeded) {
-        var formspreeMissing = !formspreeEndpoint;
-        feedback.textContent = formspreeMissing
-          ? "Your enquiry was saved to Supabase, but email notification is not configured. Set VITE_FORMSPREE_ENDPOINT, then retry to send the email without duplicating the database record."
-          : "Your enquiry was saved to Supabase, but the email notification failed. Retry to send the email without duplicating the database record.";
-        feedback.classList.add("is-error");
-      } else if (lastSubmissionAttempt.formspreeSucceeded) {
-        feedback.textContent = "The email notification was sent, but saving to Supabase failed. Retry to save the enquiry without sending a duplicate email.";
-        feedback.classList.add("is-error");
-      } else {
-        var failure = results[0].status === "rejected" ? results[0].reason : results[1].reason;
-        console.error("Unable to submit enquiry:", failure);
-        feedback.textContent = !formspreeEndpoint
-          ? supabase
-            ? "Email notification is not configured and Supabase could not save this enquiry. Set VITE_FORMSPREE_ENDPOINT, then retry."
-            : "The contact form is not configured. Set VITE_FORMSPREE_ENDPOINT and Supabase environment variables, then try again."
-          : "We couldn’t submit your enquiry. Please try again later.";
-        feedback.classList.add("is-error");
+      var response = await fetch(formspreeEndpoint, {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) {
+        throw new Error("Formspree returned " + response.status + ".");
       }
+
+      form.reset();
+      feedback.classList.remove("is-error", "is-demo");
+      feedback.textContent = "Thank you. Your enquiry has been submitted.";
     } catch (error) {
       console.error("Unable to submit enquiry:", error);
-      feedback.textContent = "We couldn’t submit your enquiry. Please try again later or email " + config.email + ".";
+      feedback.textContent = error.message.indexOf("Formspree is not configured.") === 0
+        ? "The contact form is not connected yet. Please email " + config.email + " while we finish the setup."
+        : "We couldn’t submit your enquiry. Please try again later or email " + config.email + ".";
       feedback.classList.add("is-error");
     } finally {
       isSubmitting = false;
